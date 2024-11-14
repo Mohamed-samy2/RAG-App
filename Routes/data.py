@@ -7,7 +7,6 @@ data_router = APIRouter()
 
 @data_router.post("/upload")
 async def process_endpoint(request:Request,file:UploadFile):
-    
     data_controller = DataController()
     is_valid,response = data_controller.run(file=file)
     
@@ -16,7 +15,7 @@ async def process_endpoint(request:Request,file:UploadFile):
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
-                "Response": response
+                "query": response
             }
         )
     
@@ -33,8 +32,7 @@ async def process_endpoint(request:Request,file:UploadFile):
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
-                "Response": Response.PROCESSING_FAILED.value,
-                
+                "query": Response.FILE_UPLOADED_FAILED.value,   
             }
         )
     
@@ -42,9 +40,9 @@ async def process_endpoint(request:Request,file:UploadFile):
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
-            "Respone":Response.PROCESSING_SUCCESS.value,
+            "query":Response.FILE_UPLOADED_SUCCESS.value,
             "Inserted Chunks": no_records,
-            'File name':file.filename
+            'File name':file.filename,
         }
     )
     

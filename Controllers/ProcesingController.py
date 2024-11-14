@@ -3,7 +3,10 @@ import os
 from langchain_community.document_loaders import TextLoader
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain.text_splitter import SentenceTransformersTokenTextSplitter
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from Helpers.Enums.ProcessingEnum import ProcessingEnum
+from langchain_experimental.text_splitter import SemanticChunker
 from Database.VectorDB import VectorDB
 from asyncinit import asyncinit
 import time
@@ -37,7 +40,7 @@ class ProcessController(BaseController):
         return loader.load()
         
         
-    async def process_file_content(self,file_content:list, chunk_size :int = 1100 , overlap_size :int=200):
+    async def process_file_content(self,file_content:list, chunk_size :int = 600 , overlap_size :int=100):
         
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size = chunk_size,
@@ -47,13 +50,18 @@ class ProcessController(BaseController):
             # is_separator_regex=True,
         )
         
+        # text_splitter = SemanticChunker(
+        #     GoogleGenerativeAIEmbeddings(google_api_key=self.app_settings.GOOGLE_API_KEY,model="models/embedding-001"),
+        #     min_chunk_size=chunk_size,
+        # )
+        
         chunks = await text_splitter.atransform_documents(
             documents=file_content,
         )
-
+        
         return chunks
 
-    async def insert_chunks(self,chunks:list,batch_size:int = 100):
+    async def insert_chunks(self,chunks:list,batch_size:int = 128):
         
         start = time.time()
         for i in range(0,len(chunks),batch_size):

@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 from Helpers.configs import get_settings
 import time
+import mimetypes
 app_setting = get_settings()
 
 
@@ -12,14 +13,18 @@ def get_message(user_input):
     return bot_message
 
 def response_generator(bot_message):
-    for word in bot_message[0][0].splitlines():
+    for word in bot_message.split("\n"):
         yield word + " \n"
-        time.sleep(0.05)
+        time.sleep(0.025)
 
 def upload_file(file):
-    response = requests.post(app_setting.FASTAPI_URL+'/upload',  params={"file": file})
-    output = response.json().get("Respone")
-    return output
+    mime_type, _ = mimetypes.guess_type(file.name)
+    files = {
+        "file": (file.name, file.getvalue(), mime_type)
+    }
+    response = requests.post(app_setting.FASTAPI_URL+'/upload',  files=files)
+    output = response.json().get("query")
+    return output , response.status_code
 
 st.title("Chat With Your Documents")
 
@@ -54,8 +59,17 @@ if user_input := st.chat_input("Type your message"):
     st.session_state.messages.append({"role": "assistant", "content": output})
 
 
-uploaded_file = st.sidebar.file_uploader("Upload a file", type=["txt", "pdf"])
 
+with st.sidebar:
+    uploaded_file = st.sidebar.file_uploader("Upload a file", type=["txt", "pdf"])
 
-
-
+    if uploaded_file is not None:    
+        with st.spinner("Uploading... Please wait"):
+            file_response, status_code = upload_file(uploaded_file)
+                
+        if status_code == 200:
+            st.sidebar.success(f"{file_response}")
+        else :
+            st.sidebar.error(f"{file_response}")
+    
+    uploaded_file=None
