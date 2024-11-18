@@ -4,7 +4,8 @@ from Database.VectorDB import VectorDB
 from langchain_core.messages import     HumanMessage,SystemMessage
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
-from langchain.memory import ConversationSummaryMemory
+from langchain.memory import ConversationBufferWindowMemory
+from .RetrievalController import RetrievalContoller
 from asyncinit import asyncinit
 
 @asyncinit
@@ -15,23 +16,20 @@ class LlmController(BaseController):
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash",
             temperature=0,
-            # max_tokens=None,
+            # max_tokens=500,
             # timeout=None,
             api_key=self.app_settings.GOOGLE_API_KEY,
             max_retries=2,
             )
-        self.memory = ConversationSummaryMemory(llm=self.llm)
-        self.k=2
-        self.collection = await VectorDB.get_collection()
         
+        self.prompt_compressor = await RetrievalContoller()
+        self.memory = ConversationBufferWindowMemory(k=4)
+                
     async def run(self,query):
-        documents = self.get_documents(query)
+        documents = self.prompt_compressor.run(query)
         
-        formatted_docs = "\n\n".join(doc[0] for doc in documents if doc)
-        # print(formatted_docs)
         
         memory_summary = self.memory.load_memory_variables({}).get("history", "")
-        # print("memory " ,memory_summary)
         
         template = (
         "Use This Memory that can might help you answer the question"
@@ -39,8 +37,8 @@ class LlmController(BaseController):
         f"and Use These documents that might help answer the question:"
         f"{query}\n\n"
         "\n\n Relevant Documents:\n"
-        f"{formatted_docs}\n\n"
-        "\n\n Please provide answer based only on provided documents"
+        f"{documents}\n\n"
+        "\n\n Please provide answer based only on provided documents and the memory"
         "if you don't know the answer , just say that you don't know."
         )
         
@@ -52,7 +50,7 @@ class LlmController(BaseController):
         prompt_template = ChatPromptTemplate.from_messages(messages)
         
         chain = prompt_template | self.llm | StrOutputParser()
-        result = chain.invoke({"query":query,"formatted_docs":formatted_docs})    
+        result = chain.invoke({"query":query,"documents":documents,'memory_summary':memory_summary})    
         
         self.memory.save_context(
             {"query": query},
@@ -61,13 +59,4 @@ class LlmController(BaseController):
             
         return result
     
-    
-    def get_documents(self,query):
-        
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=self.k,
-        )
-        
-        return results['documents']
         

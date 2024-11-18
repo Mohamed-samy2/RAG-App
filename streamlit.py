@@ -15,7 +15,7 @@ def get_message(user_input):
 def response_generator(bot_message):
     for word in bot_message.split("\n"):
         yield word + " \n"
-        time.sleep(0.025)
+        time.sleep(0.080)
 
 def upload_file(file):
     mime_type, _ = mimetypes.guess_type(file.name)

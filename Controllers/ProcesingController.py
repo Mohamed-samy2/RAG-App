@@ -40,7 +40,7 @@ class ProcessController(BaseController):
         return loader.load()
         
         
-    async def process_file_content(self,file_content:list, chunk_size :int = 600 , overlap_size :int=100):
+    async def process_file_content(self,file_content:list, chunk_size :int = 500 , overlap_size :int=100):
         
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size = chunk_size,
